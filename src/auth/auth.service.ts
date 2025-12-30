@@ -36,7 +36,7 @@ export class AuthService {
       const user = await this.userRepository.save(userCreated);
       //TODO retornar jwt
       return {
-        ...user,
+        user: user,
         token: this.getJwtoken({ id: user.id /*email: user.email*/ }),
       };
     } catch (error) {
@@ -50,7 +50,14 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({
       where: { email },
-      select: { email: true, password: true, id: true, fullName: true }, //! OJO!
+      select: {
+        email: true,
+        password: true,
+        id: true,
+        fullName: true,
+        isActive: true,
+        roles: true,
+      }, //! OJO!
     });
 
     console.log({ user });
@@ -61,7 +68,8 @@ export class AuthService {
       throw new UnauthorizedException('Credentials are not valid (password)');
     //TODO retornar jwt
     return {
-      ...user,
+      // ...user,
+      user: user,
       token: this.getJwtoken({ /*email: user.email*/ id: user.id }),
     };
   }
@@ -84,7 +92,8 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('User not found');
 
     return {
-      ...user,
+      // ...user,
+      user: user,
       token: this.getJwtoken({ /*email: user.email*/ id: user.id }),
     };
   }
