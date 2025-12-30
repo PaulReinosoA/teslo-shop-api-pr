@@ -9,7 +9,14 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
-import { Repository } from 'typeorm';
+import {
+  ArrayContains,
+  Between,
+  ILike,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { PaginationDto } from '../common/dtos/pagination.dto';
 import { isUUID } from 'class-validator';
 import { ProductImage } from './entities';
@@ -50,16 +57,61 @@ export class ProductsService {
   }
 
   async findAll(paginationDto: PaginationDto) {
-    const { limit = 10, ofset = 0 } = paginationDto;
+    const {
+      limit = 10,
+      offset = 0,
+      gender = '',
+      minPrice,
+      maxPrice,
+      sizes,
+      q: query,
+    } = paginationDto;
+
+    const sizesArray = sizes ? sizes.toUpperCase().split(',') : undefined;
+
+    const priceWhere =
+      minPrice !== undefined && maxPrice !== undefined
+        ? Between(minPrice, maxPrice)
+        : minPrice !== undefined
+          ? MoreThanOrEqual(minPrice)
+          : maxPrice !== undefined
+            ? LessThanOrEqual(maxPrice)
+            : undefined;
+
     const products = await this.productRepository.find({
       take: limit,
-      skip: ofset,
-      relations: { images: true },
+      skip: offset,
+      relations: {
+        images: true,
+      },
+      order: {
+        id: 'ASC',
+      },
+      where: {
+        gender: gender ? gender : undefined,
+        price: priceWhere,
+        sizes: sizesArray ? ArrayContains(sizesArray) : undefined,
+        title: query ? ILike(`%${query}%`) : undefined,
+      },
     });
-    return products.map((product) => ({
-      ...product,
-      images: product.images.map((img) => img.url),
-    }));
+
+    const totalProducts = await this.productRepository.count({
+      where: {
+        gender: gender ? gender : undefined,
+        price: priceWhere,
+        sizes: sizesArray ? ArrayContains(sizesArray) : undefined,
+        title: query ? ILike(`%${query}%`) : undefined,
+      },
+    });
+
+    return {
+      count: totalProducts,
+      pages: Math.ceil(totalProducts / limit),
+      products: products.map((product) => ({
+        ...product,
+        images: product.images.map((img) => img.url),
+      })),
+    };
   }
 
   async findOne(term: string) {
@@ -90,7 +142,7 @@ export class ProductsService {
     };
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto,user:User) {
+  async update(id: string, updateProductDto: UpdateProductDto, user: User) {
     const { images, ...toUpdate } = updateProductDto;
 
     const product = await this.productRepository.preload({ id, ...toUpdate });
