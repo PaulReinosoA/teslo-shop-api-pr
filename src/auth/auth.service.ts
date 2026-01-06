@@ -98,6 +98,30 @@ export class AuthService {
     };
   }
 
+  async checkAuthGStatus(userCheck: User) {
+    const { email } = userCheck;
+    console.log({ userCheck });
+    const user = await this.userRepository.findOne({
+      where: { email },
+      select: {
+        email: true,
+        password: true,
+        id: true,
+        fullName: true,
+        roles: true,
+        isActive: true,
+      },
+    });
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    return {
+      // ...user,
+      user: user,
+      token: this.getJwtoken({ /*email: user.email*/ id: user.id }),
+    };
+  }
+
   private getJwtoken(payload: JwtPayload) {
     const token = this.jwtService.sign({ payload });
     return token;

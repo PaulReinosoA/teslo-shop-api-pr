@@ -38,6 +38,12 @@ export class AuthController {
     return this.authService.checkAuthStatus(user);
   }
 
+  @Get('check-auth-g-status')
+  @UseGuards(AuthGuard())
+  checkAuthGStatus(@GetUser() user: User) {
+    return this.authService.checkAuthGStatus(user);
+  }
+
   @Get('private')
   @UseGuards(AuthGuard())
   testingPrivateRoute(
